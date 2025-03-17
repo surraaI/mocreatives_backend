@@ -27,20 +27,19 @@ const createSendToken = (user, statusCode, res) => {
 
 exports.registerAdmin = async (req, res, next) => {
   try {
-    // 1) Generate random password
+    // 1) Generate random password (plain text)
     const generatedPassword = crypto.randomBytes(8).toString('hex');
-    const hashedPassword = await bcrypt.hash(generatedPassword, 12);
 
-    // 2) Create admin user
+    // 2) Create admin user with plain text password
     const newUser = await User.create({
       name: req.body.name,
       email: req.body.email,
-      password: hashedPassword,
+      password: generatedPassword, // Let the pre-save hook hash this
       role: 'admin',
       passwordResetRequired: true
     });
 
-    // 3) Send credentials email
+    // 3) Send credentials email with PLAIN TEXT password
     await sendAdminCredentials({
       email: newUser.email,
       password: generatedPassword,

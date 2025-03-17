@@ -1,57 +1,123 @@
-const { Schema, model } = require('mongoose');
+const mongoose = require('mongoose');
+const bcrypt = require('bcryptjs');
+const validator = require('validator');
+const crypto = require('crypto');
 
-const userSchema = new Schema(
-    {
-        name: { type: String, required: true },
-        email: { type: String, required: true, unique: true },
-        phone: { type: String},
-        password: { type: String, required: true },
-        passwordResetToken: { type: String },
-        passwordResetExpires: { type: Date },
-        role: { 
-          type: String, 
-          enum: ['superAdmin', 'admin', 'user'], 
-          default: 'user' 
-        },
-        googleId: { type: String },
-        isVerified: { type: Boolean, default: false },
-        referralCode: { type: String, unique: true },
-        referredBy: { type: Schema.Types.ObjectId, ref: 'User' },
-        referralBalance: { type: Number, default: 0 },
-        virtualGifts: { type: Number, default: 0 }, 
-        totalEarnings: { type: Number, default: 0 },
-        withdrawnAmount: { type: Number, default: 0 },
-    },
-    { timestamps: true }
-);
+const userSchema = new mongoose.Schema({
+  email: {
+    type: String,
+    required: [true, 'Email is required'],
+    unique: true,
+    trim: true,
+    lowercase: true,
+    validate: {
+      validator: validator.isEmail,
+      message: 'Please provide a valid email address'
+    }
+  },
+  password: {
+    type: String,
+    required: [true, 'Password is required'],
+    minlength: [8, 'Password must be at least 8 characters'],
+    select: false
+  },
+  role: {
+    type: String,
+    enum: ['superadmin', 'admin'],
+    default: 'admin'
+  },
+  profilePhoto: {
+    type: String,
+    default: '',
+    validate: {
+      validator: v => validator.isURL(v, { protocols: ['http','https'], require_protocol: true }),
+      message: 'Invalid photo URL'
+    }
+  },
+  linkedinLink: {
+    type: String,
+    default: '',
+    validate: {
+      validator: v => validator.matches(v, /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$/),
+      message: 'Invalid LinkedIn URL'
+    }
+  },
+  name: {
+    type: String,
+    required: [true, 'Name is required'],
+    trim: true,
+    minlength: [2, 'Name must be at least 2 characters'],
+    maxlength: [50, 'Name cannot exceed 50 characters']
+  },
+  passwordChangedAt: Date,
+  passwordResetRequired: {
+    type: Boolean,
+    default: false
+  }
+}, { 
+  timestamps: true,
+  toJSON: { virtuals: true },
+  toObject: { virtuals: true }
+});
 
-// Pre-save hook to generate referral code
+// Indexes
+// userSchema.index({ email: 1 }, { unique: true });
+
+// Password hashing middleware
 userSchema.pre('save', async function(next) {
-    if (this.role === 'superAdmin' && this.isModified('role')) {
-      const existingSuperAdmin = await this.constructor.findOne({ 
-          role: 'superAdmin',
-          _id: { $ne: this._id }
-      });
-      if (existingSuperAdmin) {
-          throw new Error('Only one superAdmin allowed');
-      }
-    }
-
-    if (!this.referralCode && this.role === 'user') {
-      const generateCode = async () => {
-        const random = Math.random().toString(36).substr(2, 6).toUpperCase();
-        return `${this._id.toString().slice(-4)}${random}`;
-      };
-      
-      let code;
-      do {
-        code = await generateCode();
-      } while (await this.constructor.exists({ referralCode: code }));
-      
-      this.referralCode = code;
-    }
-    next();
-  });
+  if (!this.isModified('password')) return next();
   
+  this.password = await bcrypt.hash(this.password, 12);
+  this.passwordResetRequired = false;
+  next();
+});
 
-module.exports = model('User', userSchema);
+// Track password change time
+userSchema.pre('save', function(next) {
+  if (!this.isModified('password') || this.isNew) return next();
+  this.passwordChangedAt = Date.now() - 1000;
+  next();
+});
+
+// SuperAdmin validation
+userSchema.pre('save', async function(next) {
+  if (this.role === 'superadmin') {
+    const existingSuperAdmin = await this.constructor.findOne({ role: 'superadmin' });
+    if (existingSuperAdmin && !existingSuperAdmin._id.equals(this._id)) {
+      const err = new Error('Only one SuperAdmin can exist');
+      err.name = 'ValidationError';
+      return next(err);
+    }
+  }
+  next();
+});
+
+// Password comparison method
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return bcrypt.compare(candidatePassword, this.password);
+};
+
+// Password change check method
+userSchema.methods.changedPasswordAfter = function(JWTTimestamp) {
+  if (this.passwordChangedAt) {
+    const changedTimestamp = parseInt(this.passwordChangedAt.getTime() / 1000, 10);
+    return JWTTimestamp < changedTimestamp;
+  }
+  return false;
+};
+
+// Password reset token method
+userSchema.methods.createPasswordResetToken = function() {
+  const resetToken = crypto.randomBytes(32).toString('hex');
+
+  this.passwordResetToken = crypto
+    .createHash('sha256')
+    .update(resetToken)
+    .digest('hex');
+  this.passwordResetExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+  return resetToken;
+};
+
+
+module.exports = mongoose.model('User', userSchema);

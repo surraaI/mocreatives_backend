@@ -8,9 +8,6 @@ const connectDB = require('./utils/db');
 
 // Routes
 const authRoutes = require('./routes/authRoutes');
-const orderRoutes = require('./routes/orderRoutes');
-const subscriptionRoutes = require('./routes/subscriptionRoutes');
-const referralRoutes = require('./routes/referralRoutes');
 
 dotenv.config();
 const app = express();
@@ -49,13 +46,10 @@ require('./config/passport')(passport);
 
 // Route Handlers
 app.use('/auth', authRoutes);
-app.use('/orders', orderRoutes);
-app.use('/subscriptions', subscriptionRoutes);
-app.use('/referrals', referralRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
-    res.send('Welcome to Noko YouTube Boost!');
+    res.send('Welcome to mocreatives');
 });
 
 // Production configuration

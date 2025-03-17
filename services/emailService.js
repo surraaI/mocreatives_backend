@@ -1,0 +1,85 @@
+const nodemailer = require('nodemailer');
+const AppError = require('../utils/appError');
+const { htmlToText } = require('nodemailer-html-to-text');
+const inlineCss = require('nodemailer-juice');
+
+// Create transporter
+const transporter = nodemailer.createTransport({
+  service: 'Gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASSWORD
+  },
+  tls: {
+    rejectUnauthorized: process.env.NODE_ENV === 'production'
+  }
+});
+
+// Add plugins
+transporter.use('compile', htmlToText());
+transporter.use('compile', inlineCss());
+
+const sendEmail = async options => {
+  try {
+    await transporter.sendMail({
+      from: `MoCreatives Admin <${process.env.EMAIL_USER}>`,
+      ...options
+    });
+  } catch (err) {
+    console.error('Email send error:', err);
+    throw new AppError('There was an error sending the email. Try again later!', 500);
+  }
+};
+
+exports.sendAdminCredentials = async ({ email, password, name }) => {
+  const html = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <header style="background: #f8f9fa; padding: 20px; text-align: center;">
+        <img src="https://mocreatives.com/logo.png" alt="MoCreatives Logo" style="max-height: 60px;">
+      </header>
+      
+      <div style="padding: 30px 20px;">
+        <h1 style="color: #2c3e50; margin-bottom: 25px;">Welcome ${name}!</h1>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+          <p style="margin: 0 0 15px;">Your admin account has been created successfully.</p>
+          <div style="margin-bottom: 20px;">
+            <strong>Email:</strong> ${email}<br>
+            <strong>Temporary Password:</strong> ${password}
+          </div>
+          <a href="${process.env.CLIENT_URL}/login" 
+             style="display: inline-block; background: #3498db; color: white; 
+                    padding: 10px 20px; text-decoration: none; border-radius: 4px;">
+            Login to Your Account
+          </a>
+        </div>
+
+        <footer style="margin-top: 30px; color: #7f8c8d; font-size: 0.9em; text-align: center;">
+          <p>This is an automated message. Please do not reply.</p>
+          <p>&copy; ${new Date().getFullYear()} MoCreatives. All rights reserved.</p>
+        </footer>
+      </div>
+    </div>
+  `;
+
+  await sendEmail({
+    to: email,
+    subject: 'MoCreatives Admin Account Created',
+    html,
+    priority: 'high'
+  });
+};
+
+exports.sendPasswordReset = async ({ email, name, resetUrl }) => {
+  const html = `
+    <div style="/* similar styling */">
+      <!-- password reset email template -->
+    </div>
+  `;
+
+  await sendEmail({
+    to: email,
+    subject: 'Password Reset Request',
+    html
+  });
+};

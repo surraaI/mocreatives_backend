@@ -3,12 +3,6 @@ const router = express.Router();
 const adminController = require('../controllers/adminController');
 const { authenticate, restrictTo } = require('../middleware/authMiddleware');
 
-// Create Admin (SuperAdmin only)
-router.post('/',
-  authenticate,
-  restrictTo('superadmin'),
-  adminController.createAdmin
-);
 
 // Update Admin profile
 router.patch('/:id',

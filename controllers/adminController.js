@@ -6,42 +6,6 @@ const crypto = require('crypto');
 const AppError = require('../utils/appError');
 const { filterObject } = require('../utils/helpers');
 
-exports.createAdmin = async (req, res, next) => {
-  try {
-    // Generate secure random password
-    const generatedPassword = crypto.randomBytes(12).toString('hex');
-    
-    // Create admin with temporary password flag
-    const admin = await User.create({
-      ...filterObject(req.body, 'name', 'email', 'linkedinLink'),
-      password: generatedPassword,
-      role: 'admin',
-      passwordResetRequired: true
-    });
-
-    // Send credentials email
-    await sendAdminCredentials({
-      email: admin.email,
-      password: generatedPassword,
-      name: admin.name
-    });
-
-    res.status(201).json({
-      status: 'success',
-      data: {
-        user: filterObject(admin.toObject(), 'name', 'email', 'role', 'linkedinLink', 'profilePhoto')
-      }
-    });
-  } catch (err) {
-    // Handle duplicate field errors
-    if (err.code === 11000) {
-      const field = Object.keys(err.keyPattern)[0];
-      return next(new AppError(`${field.charAt(0).toUpperCase() + field.slice(1)} already exists`, 400));
-    }
-    next(err);
-  }
-};
-
 exports.updateAdmin = [
   upload.single('profilePhoto'),
   async (req, res, next) => {

@@ -5,6 +5,7 @@ const User = require('../models/User');
 const { sendAdminCredentials, sendPasswordReset } = require('../services/emailService');
 const { promisify } = require('util');
 const AppError = require('../utils/appError');
+const validator = require('validator');
 
 const signToken = id => jwt.sign({ id }, process.env.JWT_SECRET, {
   expiresIn: process.env.JWT_EXPIRES_IN
@@ -92,40 +93,54 @@ exports.login = async (req, res, next) => {
 
 exports.forgotPassword = async (req, res, next) => {
   try {
-    // 1) Get user based on POSTed email
-    const user = await User.findOne({ email: req.body.email });
-    if (!user) {
-      return next(new AppError('If the email exists, a reset link will be sent', 200));
+    // 1) Validate email format first
+    if (!validator.isEmail(req.body.email)) {
+      return next(new AppError('Please provide a valid email address', 400));
     }
 
-    // 2) Generate the random reset token
+    // 2) Get user based on POSTed email
+    const user = await User.findOne({ 
+      email: req.body.email,
+      role: { $in: ['admin', 'superadmin'] } // Only allow admins to reset password
+    });
+
+    // 3) Always return success message even if user not found
+    if (!user) {
+      return res.status(200).json({
+        status: 'success',
+        message: 'If the email exists, a reset link will be sent'
+      });
+    }
+
+    // 4) Generate the random reset token
     const resetToken = user.createPasswordResetToken();
     await user.save({ validateBeforeSave: false });
 
-    // 3) Send it to user's email
+    // 5) Send password reset email
     try {
       await sendPasswordReset({
         email: user.email,
         name: user.name,
         resetUrl: `${process.env.CLIENT_URL}/reset-password/${resetToken}`
       });
-
-      res.status(200).json({
-        status: 'success',
-        message: 'Password reset instructions sent to email'
-      });
     } catch (err) {
+      // Reset token if email fails
       user.passwordResetToken = undefined;
       user.passwordResetExpires = undefined;
       await user.save({ validateBeforeSave: false });
-
       return next(new AppError('Error sending email. Try again later!', 500));
     }
+
+    // 6) Send success response
+    res.status(200).json({
+      status: 'success',
+      message: 'Password reset instructions sent to email'
+    });
+    
   } catch (err) {
     next(err);
   }
 };
-
 exports.resetPassword = async (req, res, next) => {
   try {
     // 1) Get user based on the token

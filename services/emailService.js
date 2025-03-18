@@ -34,9 +34,6 @@ const sendEmail = async options => {
 exports.sendAdminCredentials = async ({ email, password, name }) => {
   const html = `
     <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <header style="background: #f8f9fa; padding: 20px; text-align: center;">
-        <img src="https://mocreatives.com/logo.png" alt="MoCreatives Logo" style="max-height: 60px;">
-      </header>
       
       <div style="padding: 30px 20px;">
         <h1 style="color: #2c3e50; margin-bottom: 25px;">Welcome ${name}!</h1>
@@ -72,14 +69,38 @@ exports.sendAdminCredentials = async ({ email, password, name }) => {
 
 exports.sendPasswordReset = async ({ email, name, resetUrl }) => {
   const html = `
-    <div style="/* similar styling */">
-      <!-- password reset email template -->
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="padding: 30px 20px;">
+        <h1 style="color: #2c3e50; margin-bottom: 25px;">Hi ${name},</h1>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+          <p style="margin: 0 0 15px;">We received a password reset request for your account.</p>
+          <p style="margin: 0 0 20px;">Click the button below to reset your password (valid for 10 minutes):</p>
+          
+          <a href="${resetUrl}" 
+             style="display: inline-block; background: #3498db; color: white; 
+                    padding: 10px 20px; text-decoration: none; border-radius: 4px;
+                    margin-bottom: 20px;">
+            Reset Password
+          </a>
+          
+          <p style="margin: 0; color: #7f8c8d; font-size: 0.9em;">
+            Can't click the button? Copy this link:<br>
+            <span style="word-break: break-all;">${resetUrl}</span>
+          </p>
+        </div>
+
+        <footer style="margin-top: 30px; color: #7f8c8d; font-size: 0.9em; text-align: center;">
+          <p>If you didn't request this password reset, please ignore this email.</p>
+          <p>&copy; ${new Date().getFullYear()} MoCreatives. All rights reserved.</p>
+        </footer>
+      </div>
     </div>
   `;
 
   await sendEmail({
     to: email,
-    subject: 'Password Reset Request',
+    subject: 'MoCreatives Password Reset Request',
     html
   });
 };

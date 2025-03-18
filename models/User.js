@@ -30,7 +30,13 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: '',
     validate: {
-      validator: v => validator.isURL(v, { protocols: ['http','https'], require_protocol: true }),
+      validator: function(v) {
+        if (!v) return true;
+        return validator.isURL(v, { 
+          protocols: ['http', 'https'], 
+          require_protocol: true 
+        });
+      },
       message: 'Invalid photo URL'
     }
   },
@@ -38,8 +44,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: '',
     validate: {
-      validator: v => validator.matches(v, /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$/),
-      message: 'Invalid LinkedIn URL'
+      validator: function(v) {
+        if (!v) return true;
+        return validator.matches(v, /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$/);
+      },
+      message: 'Invalid LinkedIn URL format. Use: https://linkedin.com/in/username'
     }
   },
   name: {

@@ -16,7 +16,7 @@ const createSuperAdmin = async () => {
     const superAdmin = await User.create({
       name: 'MoCreatives SuperAdmin',
       email: process.env.SUPERADMIN_EMAIL || 'superadmin@mocreatives.com',
-      password: process.env.SUPERADMIN_EMAIL || 'superadminpsd123456', 
+      password: process.env.SUPERADMIN_INITIAL_PASSWORD || 'superadminpsd123456', 
       role: 'superadmin',
       linkedinLink: 'https://linkedin.com/in/mocreatives-superadmin',
       profilePhoto: 'https://linkedin.com/in/mocreatives-superadmin'

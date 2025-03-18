@@ -59,20 +59,32 @@ exports.login = async (req, res, next) => {
 
     // 1) Check for empty fields
     if (!email || !password) {
-        return next(new AppError('Please provide email and password!', 400));
-      }
-  
-      // 2) Find user with password
-      const user = await User.findOne({ email }).select('+password');
-      console.log(user);
-  
-      // 3) Verify credentials
-      if (!user || !(await user.comparePassword(password))) {
-        return next(new AppError('Incorrect email or password', 401));
-      }
-  
-        // 4) If everything ok, send token
-        createSendToken(user, 200, res);
+      return next(new AppError('Please provide email and password!', 400));
+    }
+
+    // 2) Find user with password
+    const user = await User.findOne({ email }).select('+password');
+
+    // 3) Check if user exists
+    if (!user) {
+      return next(new AppError('Incorrect email or password', 401));
+    }
+
+    // 4) Verify password
+    const isPasswordCorrect = await user.comparePassword(password);
+    console.log(isPasswordCorrect);
+    console.log(password);
+    if (!isPasswordCorrect) {
+      return next(new AppError('Incorrect email or password', 401));
+    }
+
+    // 5) Check if password reset required
+    if (user.passwordResetRequired) {
+      return next(new AppError('Password reset required', 401, 'reset_required'));
+    }
+
+    // 6) If everything ok, send token
+    createSendToken(user, 200, res);
   } catch (err) {
     next(err);
   }

@@ -58,6 +58,8 @@ const userSchema = new mongoose.Schema({
     minlength: [2, 'Name must be at least 2 characters'],
     maxlength: [50, 'Name cannot exceed 50 characters']
   },
+  passwordResetToken: String,
+  passwordResetExpires: Date,
   passwordChangedAt: Date,
   passwordResetRequired: {
     type: Boolean,

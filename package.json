@@ -1,15 +1,16 @@
 {
-  "name": "noko_youtube_boost",
+  "name": "mocreatives-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "MoCreatives backend API",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node app.js",
-    "dev": "nodemon app.js"
+    "vercel-build": "npm install",
+    "dev": "nodemon app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "Sura Itana",
   "license": "ISC",
   "dependencies": {
     "axios": "^1.7.9",
@@ -39,5 +40,8 @@
   },
   "devDependencies": {
     "nodemon": "^3.1.9"
+  },
+  "engines": {
+    "node": ">=18.x"
   }
 }

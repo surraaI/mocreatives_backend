@@ -31,13 +31,12 @@ const userSchema = new mongoose.Schema({
     default: '',
     validate: {
       validator: function(v) {
+        // Allow empty or valid file path
         if (!v) return true;
-        return validator.isURL(v, { 
-          protocols: ['http', 'https'], 
-          require_protocol: true 
-        });
+        // Check for local file path format (uploads/...)
+        return v.startsWith('uploads/');
       },
-      message: 'Invalid photo URL'
+      message: 'Profile photo must be a valid file path starting with uploads/'
     }
   },
   linkedinLink: {

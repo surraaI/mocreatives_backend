@@ -6,7 +6,7 @@ const { authenticate, restrictTo } = require('../middlewares/authMiddleware');
 router.post(
   '/register',
   authenticate,
-  restrictTo('superadmin'),
+  restrictTo(['superadmin']),
   authController.registerAdmin
 );
 

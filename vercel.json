@@ -6,19 +6,11 @@
         "use": "@vercel/node",
         "config": {
           "maxLambdaSize": "15mb",
-          "includeFiles": [
-            "uploads/**",
-            "client/build/**"
-          ]
+          "includeFiles": []
         }
       }
     ],
     "routes": [
-      {
-        "src": "/(.*)",
-        "dest": "app.js",
-        "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
-      },
       {
         "src": "/(.*)",
         "dest": "app.js"

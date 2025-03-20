@@ -40,3 +40,10 @@ exports.checkOwnership = (model) => async (req, res, next) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.sanitizeContactData = (req, res, next) => {
+  if (req.query.search) {
+    req.query.search = req.query.search.replace(/[^a-zA-Z0-9@.]/g, '');
+  }
+  next();
+};

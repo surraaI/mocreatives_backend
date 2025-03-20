@@ -10,6 +10,7 @@ const AppError = require('./utils/appError');
 const blogRoutes = require('./routes/blogRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
+const contactRoutes = require('./routes/contactRoutes'); 
 
 dotenv.config();
 const app = express();
@@ -49,6 +50,7 @@ require('./config/passport')(passport);
 app.use('/auth', authRoutes);
 app.use('/blogs', blogRoutes);
 app.use('/admin', adminRoutes);
+app.use('/contact', contactRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

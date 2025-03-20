@@ -4,10 +4,11 @@ const cors = require('cors');
 const passport = require('passport');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const multer = require('multer'); // Added Multer import
 const connectDB = require('./utils/db');
 const AppError = require('./utils/appError'); 
-
-// Routes
+const blogRoutes = require('./routes/blogRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
 
 dotenv.config();
@@ -46,6 +47,8 @@ require('./config/passport')(passport);
 
 // Route Handlers
 app.use('/auth', authRoutes);
+app.use('/blogs', blogRoutes);
+app.use('/admin', adminRoutes);
 
 // Basic route
 app.get('/', (req, res) => {
@@ -60,9 +63,17 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Updated Error handling middleware
+// Unified Error handling middleware
 app.use((err, req, res, next) => {
   console.error('ERROR 💥:', err.stack);
+
+  // Handle Multer errors first
+  if (err instanceof multer.MulterError) {
+    return res.status(400).json({
+      success: false,
+      message: err.message
+    });
+  }
 
   // Handle AppError instances
   if (err instanceof AppError) {

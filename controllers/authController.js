@@ -73,8 +73,6 @@ exports.login = async (req, res, next) => {
 
     // 4) Verify password
     const isPasswordCorrect = await user.comparePassword(password);
-    console.log(isPasswordCorrect);
-    console.log(password);
     if (!isPasswordCorrect) {
       return next(new AppError('Incorrect email or password', 401));
     }

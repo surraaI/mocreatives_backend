@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const bcrypt = require('bcryptjs');
-const upload = require('../middleware/upload');
+const { upload } = require('../middlewares/fileUploadMiddleware');
 const { sendAdminCredentials } = require('../services/emailService');
 const crypto = require('crypto');
 const AppError = require('../utils/appError');

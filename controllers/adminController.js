@@ -4,6 +4,48 @@ const { filterObject } = require('../utils/helpers');
 const fs = require('fs/promises');
 const path = require('path');
 
+exports.getAllAdmins = async (req, res, next) => {
+  try {
+    // Get query parameters
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 100;
+    const skip = (page - 1) * limit;
+    
+    // Build base query
+    const query = User.find({ 
+      role: { $in: ['admin', 'superadmin'] } 
+    });
+
+    // Sorting
+    const sort = req.query.sort || '-createdAt';
+    query.sort(sort);
+
+    // Pagination
+    query.skip(skip).limit(limit);
+
+    // Execute query
+    const admins = await query.select('-password -__v');
+
+    // Get total count for pagination info
+    const total = await User.countDocuments({ 
+      role: { $in: ['admin', 'superadmin'] } 
+    });
+
+    res.json({
+      status: 'success',
+      results: admins.length,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      data: {
+        admins
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 exports.updateAdmin = async (req, res, next) => {
   try {
     // Authorization check

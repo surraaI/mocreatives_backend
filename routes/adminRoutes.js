@@ -4,6 +4,12 @@ const adminController = require('../controllers/adminController');
 const { authenticate, restrictTo } = require('../middlewares/authMiddleware');
 const { upload } = require('../middlewares/fileUploadMiddleware');
 
+// get admins (superadmin only)
+router.get('/',
+  authenticate,
+  restrictTo('superadmin'), 
+  adminController.getAllAdmins);
+
 // Update Admin profile (with photo upload)
 router.patch(
   '/:id',
@@ -17,7 +23,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  restrictTo(['superadmin']),
+  restrictTo('superadmin'),
   adminController.deleteAdmin
 );
 

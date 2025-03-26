@@ -18,13 +18,13 @@ const createSuperAdmin = async () => {
       email: process.env.SUPERADMIN_EMAIL || 'superadmin@mocreatives.com',
       password: process.env.SUPERADMIN_INITIAL_PASSWORD || 'superadminpsd123456', 
       role: 'superadmin',
-      linkedinLink: 'https://linkedin.com/in/mocreatives-superadmin',
-      profilePhoto: 'https://linkedin.com/in/mocreatives-superadmin'
+      linkedinLink: '',
+      profilePhoto: ''
     });
 
     console.log('SuperAdmin created successfully:');
-    console.log(`Email: ${superAdmin.email}`);
-    console.log(`Temporary Password: ${tempPassword}`); // This is what you'll use to login
+    console.log(`Email: ${superAdmin.email}`)
+    console.log(`Password: ${process.env.SUPERADMIN_INITIAL_PASSWORD || 'superadminpsd123456'}`);
     process.exit();
   } catch (error) {
     console.error('Error creating SuperAdmin:', error.message);

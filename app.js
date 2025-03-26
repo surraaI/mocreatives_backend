@@ -11,6 +11,11 @@ const blogRoutes = require('./routes/blogRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const authRoutes = require('./routes/authRoutes');
 const contactRoutes = require('./routes/contactRoutes'); 
+const cron = require('node-cron');
+const Subscription = require('./models/Subscription');
+const Blog = require('./models/Blog');
+const { sendWeeklyBlogs } = require('./services/emailService');
+const subscriptionRoutes = require('./routes/subscriptionRoutes');
 
 dotenv.config();
 const app = express();
@@ -18,6 +23,61 @@ const port = process.env.PORT || 3000;
 
 // Database connection
 connectDB();
+
+// Weekly email job (runs every Monday at 9 AM)
+cron.schedule('0 9 * * 1', async () => {
+  try {
+    console.log('Starting weekly email job...');
+    
+    // Get verified subscribers
+    const subscribers = await Subscription.find({ verified: true });
+    if (subscribers.length === 0) return;
+
+    // Get blogs from last week
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    const blogs = await Blog.find({ 
+      postDate: { $gte: oneWeekAgo }
+    }).sort('-postDate');
+
+    if (blogs.length === 0) return;
+
+    // Send emails
+    for (const subscriber of subscribers) {
+      await sendWeeklyBlogs(
+        subscriber.email,
+        blogs,
+        `${process.env.CLIENT_URL}/unsubscribe/${subscriber.unsubscribeToken}`
+      );
+    }
+
+    console.log(`Sent weekly emails to ${subscribers.length} subscribers`);
+  } catch (err) {
+    console.error('Error in weekly email job:', err);
+  }
+});
+
+
+app.get('/api/test-weekly-emails', async (req, res) => {
+  try {
+    const subscribers = await Subscription.find({ verified: true });
+    const blogs = await Blog.find().limit(3); // Get sample blogs
+    
+    for (const sub of subscribers) {
+      await sendWeeklyBlogs(
+        sub.email,
+        blogs,
+        `${process.env.CLIENT_URL}/unsubscribe/${sub.unsubscribeToken}`
+      );
+    }
+    
+    res.json({ message: `Test emails sent to ${subscribers.length} users` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 // Middleware Configuration
 const allowedOrigins = [
@@ -52,6 +112,7 @@ app.use('/auth', authRoutes);
 app.use('/blogs', blogRoutes);
 app.use('/admin', adminRoutes);
 app.use('/contact', contactRoutes);
+app.use('/subscriptions', subscriptionRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

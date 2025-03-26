@@ -3,15 +3,27 @@ const AppError = require('../utils/appError');
 const { htmlToText } = require('nodemailer-html-to-text');
 const inlineCss = require('nodemailer-juice');
 
-// Create transporter
+// Create transporter with explicit settings
 const transporter = nodemailer.createTransport({
-  service: 'Gmail',
+  host: 'smtp.gmail.com',
+  port: 587,
+  secure: false,
+  requireTLS: true,
   auth: {
     user: process.env.EMAIL_USER,
     pass: process.env.EMAIL_PASSWORD
   },
   tls: {
-    rejectUnauthorized: process.env.NODE_ENV === 'production'
+    ciphers: 'SSLv3'
+  }
+});
+
+// Verify connection on startup
+transporter.verify((error) => {
+  if (error) {
+    console.error('SMTP Connection Error:', error);
+  } else {
+    console.log('SMTP server is ready to send emails');
   }
 });
 
@@ -26,10 +38,15 @@ const sendEmail = async options => {
       ...options
     });
   } catch (err) {
-    console.error('Email send error:', err);
+    console.error('Email send error details:', {
+      errorCode: err.code,
+      command: err.command,
+      response: err.response
+    });
     throw new AppError('There was an error sending the email. Try again later!', 500);
   }
 };
+
 
 exports.sendAdminCredentials = async ({ email, password, name }) => {
   const html = `
@@ -169,5 +186,81 @@ exports.sendContactNotification = async ({ name, email, subject, message, contac
     subject: `New Contact Submission: ${subject}`,
     html,
     priority: 'high'
+  });
+};
+
+exports.sendVerificationEmail = async ({ email, verificationUrl, unsubscribeUrl }) => {
+  const html = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="padding: 30px 20px;">
+        <h1 style="color: #2c3e50; margin-bottom: 25px;">Confirm Your Subscription</h1>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+          <p style="margin: 0 0 15px;">Thank you for subscribing to our weekly blogs!</p>
+          <p style="margin: 0 0 20px;">Please click the button below to confirm your subscription:</p>
+          
+          <a href="${verificationUrl}" 
+             style="display: inline-block; background: #3498db; color: white; 
+                    padding: 10px 20px; text-decoration: none; border-radius: 4px;">
+            Verify Email
+          </a>
+
+          <p style="margin-top: 20px; color: #7f8c8d; font-size: 0.9em;">
+            Or use this link: <span style="word-break: break-all;">${verificationUrl}</span>
+          </p>
+        </div>
+
+        <footer style="margin-top: 30px; color: #7f8c8d; font-size: 0.9em; text-align: center;">
+          <p>This is an automated message. If you didn't request this, you can 
+            <a href="${unsubscribeUrl}" style="color: #3498db; text-decoration: none;">unsubscribe immediately</a>.
+          </p>
+        </footer>
+      </div>
+    </div>
+  `;
+
+  await sendEmail({
+    to: email,
+    subject: 'Confirm Your Subscription',
+    html
+  });
+};
+
+exports.sendWeeklyBlogs = async (email, blogs, unsubscribeUrl) => {
+  const html = `
+    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="padding: 30px 20px;">
+        <h1 style="color: #2c3e50; margin-bottom: 25px;">Weekly Blog Digest</h1>
+        
+        <div style="background: #f8f9fa; padding: 20px; border-radius: 8px;">
+          <p>Here are this week's latest blog posts:</p>
+          
+          ${blogs.map(blog => `
+            <div style="margin: 20px 0; padding: 15px; background: white; border-radius: 4px;">
+              <h2 style="color: #2c3e50; margin: 0 0 10px;">${blog.title}</h2>
+              <p style="margin: 0 0 10px;">${blog.description}</p>
+              <a href="${process.env.CLIENT_URL}/blogs/${blog._id}" 
+                 style="display: inline-block; background: #3498db; color: white; 
+                        padding: 8px 16px; text-decoration: none; border-radius: 4px;">
+                Read More
+              </a>
+            </div>
+          `).join('')}
+
+          <div style="margin-top: 25px; text-align: center;">
+            <a href="${unsubscribeUrl}" 
+               style="color: #7f8c8d; font-size: 0.9em; text-decoration: none;">
+              Unsubscribe from weekly emails
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  await sendEmail({
+    to: email,
+    subject: 'Your Weekly Blog Digest',
+    html
   });
 };

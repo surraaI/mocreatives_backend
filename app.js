@@ -110,7 +110,7 @@ require('./config/passport')(passport);
 // Route Handlers
 app.use('/auth', authRoutes);
 app.use('/blogs', blogRoutes);
-app.use('/admin', adminRoutes);
+app.use('/admins', adminRoutes);
 app.use('/contact', contactRoutes);
 app.use('/subscriptions', subscriptionRoutes);
 

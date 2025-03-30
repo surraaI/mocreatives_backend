@@ -27,17 +27,28 @@ const userSchema = new mongoose.Schema({
     default: 'admin'
   },
   profilePhoto: {
-    type: String,
-    default: '',
-    validate: {
-      validator: function(v) {
-        // Allow empty or valid file path
-        if (!v) return true;
-        // Check for local file path format (uploads/...)
-        return v.startsWith('uploads/');
+    type: {
+      url: {
+        type: String,
+        default: '',
+        validate: {
+          validator: function(v) {
+            if (!v) return true; // Allow empty
+            return validator.isURL(v, {
+              protocols: ['http','https'],
+              require_protocol: true,
+              host_whitelist: ['res.cloudinary.com']
+            });
+          },
+          message: 'Must be a valid Cloudinary URL'
+        }
       },
-      message: 'Profile photo must be a valid file path starting with uploads/'
-    }
+      public_id: {
+        type: String,
+        default: ''
+      }
+    },
+    default: null
   },
   linkedinLink: {
     type: String,
@@ -66,12 +77,20 @@ const userSchema = new mongoose.Schema({
   }
 }, { 
   timestamps: true,
-  toJSON: { virtuals: true },
+  toJSON: { 
+    virtuals: true,
+    transform: function(doc, ret) {
+      delete ret.password;
+      delete ret.__v;
+      return ret;
+    }
+  },
   toObject: { virtuals: true }
 });
 
 // Indexes
-// userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ email: 1 }, { unique: true });
+userSchema.index({ 'profilePhoto.public_id': 1 });
 
 // Password hashing middleware
 userSchema.pre('save', async function(next) {
@@ -93,10 +112,16 @@ userSchema.pre('save', function(next) {
 userSchema.pre('save', async function(next) {
   if (this.role === 'superadmin') {
     const existingSuperAdmin = await this.constructor.findOne({ role: 'superadmin' });
+    
     if (existingSuperAdmin && !existingSuperAdmin._id.equals(this._id)) {
       const err = new Error('Only one SuperAdmin can exist');
       err.name = 'ValidationError';
       return next(err);
+    }
+    
+    // Ensure first superadmin can't be deleted
+    if (this.isDeleted) {
+      return next(new Error('SuperAdmin cannot be deleted'));
     }
   }
   next();
@@ -124,10 +149,9 @@ userSchema.methods.createPasswordResetToken = function() {
     .createHash('sha256')
     .update(resetToken)
     .digest('hex');
-  this.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 10 minutes
+  this.passwordResetExpires = Date.now() + 60 * 60 * 1000; // 1 hour
 
   return resetToken;
 };
-
 
 module.exports = mongoose.model('User', userSchema);

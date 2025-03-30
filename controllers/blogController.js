@@ -2,6 +2,10 @@ const Blog = require('../models/Blog');
 
 exports.createBlog = async (req, res) => {
   try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'No image uploaded' });
+    }
+
     const { title, description, readMinute } = req.body;
     
     const newBlog = new Blog({
@@ -9,13 +13,17 @@ exports.createBlog = async (req, res) => {
       description,
       readMinute,
       author: req.user.id,
-      image: req.file.path
+      image: req.file.path // This will now be the Cloudinary URL
     });
 
     await newBlog.save();
     res.status(201).json(newBlog);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Error creating blog:', error);
+    res.status(500).json({ 
+      message: error.message,
+      stack: process.env.NODE_ENV === 'production' ? undefined : error.stack
+    });
   }
 };
 

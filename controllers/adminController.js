@@ -1,35 +1,25 @@
 const User = require('../models/User');
 const AppError = require('../utils/appError');
 const { filterObject } = require('../utils/helpers');
-const fs = require('fs/promises');
-const path = require('path');
+const { v2: cloudinary } = require('cloudinary');
 
 exports.getAllAdmins = async (req, res, next) => {
   try {
-    // Get query parameters
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 100;
     const skip = (page - 1) * limit;
     
-    // Build base query
     const query = User.find({ 
       role: { $in: ['admin', 'superadmin'] } 
-    });
+    }).select('-password -__v');
 
-    // Sorting
     const sort = req.query.sort || '-createdAt';
-    query.sort(sort);
+    query.sort(sort).skip(skip).limit(limit);
 
-    // Pagination
-    query.skip(skip).limit(limit);
-
-    // Execute query
-    const admins = await query.select('-password -__v');
-
-    // Get total count for pagination info
-    const total = await User.countDocuments({ 
-      role: { $in: ['admin', 'superadmin'] } 
-    });
+    const [admins, total] = await Promise.all([
+      query.exec(),
+      User.countDocuments({ role: { $in: ['admin', 'superadmin'] } })
+    ]);
 
     res.json({
       status: 'success',
@@ -37,9 +27,7 @@ exports.getAllAdmins = async (req, res, next) => {
       total,
       page,
       pages: Math.ceil(total / limit),
-      data: {
-        admins
-      }
+      data: { admins }
     });
   } catch (err) {
     next(err);
@@ -58,31 +46,35 @@ exports.updateAdmin = async (req, res, next) => {
       return next(new AppError('No user found with that ID', 404));
     }
 
-    // Define allowed fields based on role
+    // Allowed fields configuration
     const allowedFields = ['name', 'linkedinLink'];
     if (req.user.role === 'superadmin') {
       allowedFields.push('email', 'role');
     }
 
-    // Filter request body
     const filteredBody = filterObject(req.body, ...allowedFields);
 
     // Handle profile photo upload
     if (req.file) {
-      // Delete old photo if exists
-      if (userToUpdate.profilePhoto) {
-        const oldPhotoPath = path.join(__dirname, '..', userToUpdate.profilePhoto);
-        await fs.unlink(oldPhotoPath).catch(() => {}); // Silent fail if file doesn't exist
+      // Delete old photo from Cloudinary if exists
+      if (userToUpdate.profilePhoto?.public_id) {
+        await cloudinary.uploader
+          .destroy(userToUpdate.profilePhoto.public_id)
+          .catch(err => console.error('Cloudinary deletion error:', err));
       }
-      filteredBody.profilePhoto = req.file.path;
+
+      filteredBody.profilePhoto = {
+        url: req.file.path,
+        public_id: req.file.filename
+      };
     }
 
-    // Prevent role modification for non-superadmins
+    // Prevent role escalation
     if (filteredBody.role && req.user.role !== 'superadmin') {
       return next(new AppError('Only SuperAdmins can modify roles', 403));
     }
 
-    // Email update validation
+    // Email conflict check
     if (filteredBody.email && filteredBody.email !== userToUpdate.email) {
       const existingUser = await User.findOne({ email: filteredBody.email });
       if (existingUser) {
@@ -112,10 +104,11 @@ exports.deleteAdmin = async (req, res, next) => {
       return next(new AppError('No user found with that ID', 404));
     }
 
-    // Delete associated profile photo
-    if (user.profilePhoto) {
-      const photoPath = path.join(__dirname, '..', user.profilePhoto);
-      await fs.unlink(photoPath).catch(() => {}); // Silent fail if file doesn't exist
+    // Delete Cloudinary asset if exists
+    if (user.profilePhoto?.public_id) {
+      await cloudinary.uploader
+        .destroy(user.profilePhoto.public_id)
+        .catch(err => console.error('Cloudinary deletion error:', err));
     }
 
     await User.findByIdAndDelete(req.params.id);

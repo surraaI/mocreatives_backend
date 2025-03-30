@@ -7,14 +7,14 @@ const { upload } = require('../middlewares/fileUploadMiddleware');
 // get admins (superadmin only)
 router.get('/',
   authenticate,
-  restrictTo('superadmin'), 
+  restrictTo(['superadmin']), 
   adminController.getAllAdmins);
 
 // Update Admin profile (with photo upload)
 router.patch(
   '/:id',
   authenticate,
-  restrictTo('admin', 'superadmin'),
+  restrictTo(['admin', 'superadmin']),
   upload.single('profilePhoto'), 
   adminController.updateAdmin
 );
@@ -23,7 +23,7 @@ router.patch(
 router.delete(
   '/:id',
   authenticate,
-  restrictTo('superadmin'),
+  restrictTo(['superadmin']),
   adminController.deleteAdmin
 );
 
